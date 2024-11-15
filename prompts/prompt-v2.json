@@ -1,0 +1,109 @@
+{
+    "Comment": "Assistente de Delivery usando Bedrock e Step Functions",
+    "StartAt": "Escolher Prato Principal",
+    "States": {
+        "Escolher Prato Principal": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::bedrock:invokeModel",
+            "Parameters": {
+                "ModelId": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
+                "Body": {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 2000,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "Estou organizando um jantar especial. Quais são 3 pratos principais que você recomenda pedir?"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "ContentType": "application/json",
+                "Accept": "*/*"
+            },
+            "Next": "Adicionar Prato ao Histórico",
+            "ResultPath": "$.prato",
+            "ResultSelector": {
+                "prato_result.$": "$.Body.content[0].text"
+            }
+        },
+        "Adicionar Prato ao Histórico": {
+            "Type": "Pass",
+            "Next": "Escolher Bebida",
+            "Parameters": {
+                "historico.$": "States.Format('Prato Principal: {}', $.prato.prato_result)"
+            },
+            "ResultPath": "$.historico_prato"
+        },
+        "Escolher Bebida": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::bedrock:invokeModel",
+            "Parameters": {
+                "ModelId": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
+                "Body": {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 2000,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "Quais são 2 bebidas que combinam com o jantar especial de delivery?"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "ContentType": "application/json",
+                "Accept": "*/*"
+            },
+            "Next": "Adicionar Bebida ao Histórico",
+            "ResultPath": "$.bebida",
+            "ResultSelector": {
+                "bebida_result.$": "$.Body.content[0].text"
+            }
+        },
+        "Adicionar Bebida ao Histórico": {
+            "Type": "Pass",
+            "Next": "Escolher Local de Entrega",
+            "Parameters": {
+                "historico.$": "States.Format('{}\nBebidas: {}', $.historico_prato.historico, $.bebida.bebida_result)"
+            },
+            "ResultPath": "$.historico_bebida"
+        },
+        "Escolher Local de Entrega": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::bedrock:invokeModel",
+            "Parameters": {
+                "ModelId": "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
+                "Body": {
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 2000,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "Sugira um local ideal para entregar este jantar especial."
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "ContentType": "application/json",
+                "Accept": "*/*"
+            },
+            "End": true,
+            "ResultPath": "$.local",
+            "ResultSelector": {
+                "local_result.$": "$.Body.content[0].text"
+            }
+        }
+    }
+}
